@@ -1,0 +1,36 @@
+project_root/
+│
+├── backend/
+│   ├── config.json
+│   ├── constants.py
+│   ├── server.py
+│   ├── models/
+│   │   └── api_models.py
+│   ├── routes/
+│   │   ├── extraction.py
+│   │   ├── summarization.py
+│   │   ├── embeddings.py
+│   │   └── chat.py
+│   ├── services/
+│   │   ├── extraction_service.py
+│   │   ├── summarization_service.py
+│   │   ├── embeddings_service.py
+│   │   └── chat_service.py
+│   └── utils/
+│       ├── file_utils.py
+│       └── config_utils.py
+│
+├── frontend/
+│   ├── app.py
+│   ├── config.yaml
+│   ├── frontend_constants.py
+│   ├── ui/
+│   │   ├── home.py
+│   │   ├── ai_engine.py
+│   │   └── contact.py
+│   └── utils/
+│       ├── api_client.py
+│       └── session_manager.py
+│
+├── requirements.txt
+└── README.md

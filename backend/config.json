@@ -1,0 +1,30 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "debug": false
+  },
+  "models": {
+    "embedding": {
+      "default": "text-embedding-3-large"
+    },
+    "openai": {
+      "summarization": "gpt-4o-mini",
+      "chat": "gpt-4o-mini"
+    },
+    "ollama": {
+      "default": "deepseek-r1:1.5b",
+      "base_url": "http://localhost:11434"
+    }
+  },
+  "extraction": {
+    "cache_mode": "BYPASS"
+  },
+  "embeddings": {
+    "chunk_size": 1000,
+    "chunk_overlap": 100
+  },
+  "retrieval": {
+    "k": 5
+  }
+}
