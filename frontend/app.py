@@ -1,7 +1,6 @@
 import streamlit as st
 from utils.session_manager import initialize_session_state
 from ui.home import render_home_page
-from ui.ai_engine import render_ai_engine_page
 from ui.contact import render_contact_page
 import yaml
 
@@ -21,15 +20,9 @@ st.set_page_config(
 # Set title
 st.title(config["ui"]["page_title"])
 
-# Navigation sidebar
-pages = config["pages"]
-page_names = [p["display_name"] for p in pages]
-page = st.sidebar.selectbox("Navigation", page_names)
+# Main page content
+render_home_page()
 
-# Render selected page
-if page == "Home":
-    render_home_page()
-elif page == "AI Engine":
-    render_ai_engine_page()
-elif page == "Contact":
-    render_contact_page()
+# Add a contact section at the bottom of the home page
+st.markdown("---")
+render_contact_page()

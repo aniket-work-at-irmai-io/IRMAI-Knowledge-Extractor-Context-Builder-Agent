@@ -4,11 +4,3 @@ server:
 ui:
   page_title: IRMAI Knowledge Extractor & Context Builder Agent
   layout: wide
-
-pages:
-  - name: Home
-    display_name: Home
-  - name: AI Engine
-    display_name: AI Engine
-  - name: Contact
-    display_name: Contact
