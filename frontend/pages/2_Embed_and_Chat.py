@@ -17,6 +17,7 @@ initialize_session_state()
 # Set page title
 st.title("Create Embeddings & Chat")
 
+
 def render_embeddings_section():
     """Render the embeddings creation section."""
     st.header(EMBEDDINGS_TITLE)
@@ -28,10 +29,16 @@ def render_embeddings_section():
     if not st.session_state.embedding_done:
         if st.button("Create Embeddings"):
             with st.spinner("Creating embeddings..."):
+                # Combine all extracted texts
+                all_extracted_text = ""
+                for file in st.session_state.extracted_files:
+                    with open(file, "r", encoding="utf-8") as f:
+                        all_extracted_text += f.read() + "\n\n"
+
                 # Call the API to create embeddings
                 response = post_request(
                     API_CREATE_EMBEDDINGS_URL,
-                    {"text": st.session_state.extracted_text}
+                    {"text": all_extracted_text}
                 )
 
                 if response.get("status") == "success":
@@ -41,6 +48,24 @@ def render_embeddings_section():
                     st.error(f"Error: {response.get('message', 'Unknown error')}")
     else:
         st.info("Embeddings have been created. You can now chat with the content.")
+
+        # Add the "Refresh Embeddings" button
+        if st.button("Refresh Embeddings"):
+            with st.spinner("Refreshing embeddings..."):
+                # Reset the embedding state first
+                st.session_state.embedding_done = False
+
+                # Call the API to delete embeddings (if they exist)
+                response = post_request(
+                    "/api/embeddings/delete",  # We'll create this endpoint
+                    {}
+                )
+
+                # Regardless of delete result, we can now create new embeddings
+                st.success("Ready to create new embeddings.")
+                # Force a rerun to update the UI
+                st.rerun()
+
 
 def render_chat_section():
     """Render the chat section."""
