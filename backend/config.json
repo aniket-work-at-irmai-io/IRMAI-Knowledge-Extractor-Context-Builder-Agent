@@ -6,11 +6,11 @@
   },
   "models": {
     "embedding": {
-      "default": "text-embedding-3-large"
+      "default": "text-embedding-3-small"
     },
     "openai": {
-      "summarization": "gpt-4o-mini",
-      "chat": "gpt-4o-mini"
+      "summarization": "gpt-4o",
+      "chat": "gpt-4o"
     },
     "ollama": {
       "default": "deepseek-r1:1.5b",

@@ -1,8 +1,9 @@
 from langchain import PromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureChatOpenAI
 from langchain_ollama import ChatOllama
 from utils.config_utils import CONFIG
 from constants import SUMMARY_PROMPT_TEMPLATE, MODEL_TYPE_CLOSED, MODEL_TYPE_OPEN
+from utils.irmai_utils import get_azure_openai_client
 
 
 class SummarizationService:
@@ -13,8 +14,23 @@ class SummarizationService:
         prompt_text = summary_prompt.format(content=content)
 
         if model_type == MODEL_TYPE_CLOSED:
+            # Get Azure OpenAI client (just to ensure it's initialized)
+            get_azure_openai_client()
+
+            # Azure OpenAI credentials
+            azure_endpoint = "https://smartcall.openai.azure.com/"
+            api_key = "abfThcHeAaGdPRna0tPFYEI4yXaz6wLU0uKlDrnPA7llpeyirOJMJQQJ99ALACYeBjFXJ3w3AAABACOGvWJz"
+            api_version = "2024-02-01"
+
             model_name = CONFIG["models"]["openai"]["summarization"]
-            summarizer = ChatOpenAI(model_name=model_name, temperature=0.3, max_tokens=1500)
+            summarizer = AzureChatOpenAI(
+                deployment_name=model_name,
+                azure_endpoint=azure_endpoint,  # Using azure_endpoint instead of openai_api_base
+                api_key=api_key,  # Using api_key instead of openai_api_key
+                api_version=api_version,  # Using api_version instead of openai_api_version
+                temperature=0.3,
+                max_tokens=1500
+            )
         else:
             model_name = CONFIG["models"]["ollama"]["default"]
             base_url = CONFIG["models"]["ollama"]["base_url"]

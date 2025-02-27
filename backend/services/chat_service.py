@@ -1,11 +1,12 @@
 from langchain import PromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain.chains import RetrievalQA
 from utils.config_utils import CONFIG
 from utils.file_utils import save_chat_history
 from services.embeddings_service import EmbeddingsService
 from constants import QA_PROMPT_TEMPLATE, MODEL_TYPE_CLOSED, MODEL_TYPE_OPEN, CHAT_HISTORY_PATH
+from utils.irmai_utils import get_azure_openai_client
 
 
 class ChatService:
@@ -26,8 +27,23 @@ class ChatService:
 
         # Initialize the appropriate LLM based on selection
         if model_type == MODEL_TYPE_CLOSED:
+            # Get Azure OpenAI client (just to ensure it's initialized)
+            get_azure_openai_client()
+
+            # Azure OpenAI credentials
+            azure_endpoint = "https://smartcall.openai.azure.com/"
+            api_key = "abfThcHeAaGdPRna0tPFYEI4yXaz6wLU0uKlDrnPA7llpeyirOJMJQQJ99ALACYeBjFXJ3w3AAABACOGvWJz"
+            api_version = "2024-02-01"
+
             model_name = CONFIG["models"]["openai"]["chat"]
-            llm = ChatOpenAI(model_name=model_name, temperature=0.3, max_tokens=1000)
+            llm = AzureChatOpenAI(
+                deployment_name=model_name,
+                azure_endpoint=azure_endpoint,  # Using azure_endpoint instead of openai_api_base
+                api_key=api_key,  # Using api_key instead of openai_api_key
+                api_version=api_version,  # Using api_version instead of openai_api_version
+                temperature=0.3,
+                max_tokens=1000
+            )
         else:
             model_name = CONFIG["models"]["ollama"]["default"]
             base_url = CONFIG["models"]["ollama"]["base_url"]
