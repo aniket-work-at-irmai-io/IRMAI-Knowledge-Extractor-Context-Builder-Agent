@@ -7,6 +7,9 @@ class URLInput(BaseModel):
 class TextInput(BaseModel):
     text: str
 
+class FileListInput(BaseModel):
+    file_paths: List[str]
+
 class ModelTypeInput(BaseModel):
     model_type: str
 

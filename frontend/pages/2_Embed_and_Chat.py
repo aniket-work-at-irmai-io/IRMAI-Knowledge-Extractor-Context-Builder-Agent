@@ -29,16 +29,10 @@ def render_embeddings_section():
     if not st.session_state.embedding_done:
         if st.button("Create Embeddings"):
             with st.spinner("Creating embeddings..."):
-                # Combine all extracted texts
-                all_extracted_text = ""
-                for file in st.session_state.extracted_files:
-                    with open(file, "r", encoding="utf-8") as f:
-                        all_extracted_text += f.read() + "\n\n"
-
-                # Call the API to create embeddings
+                # Use the direct file path method instead of combining texts
                 response = post_request(
-                    API_CREATE_EMBEDDINGS_URL,
-                    {"text": all_extracted_text}
+                    "/api/embeddings/create_from_files",
+                    {"file_paths": st.session_state.extracted_files}
                 )
 
                 if response.get("status") == "success":

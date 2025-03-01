@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from models.api_models import TextInput
+from models.api_models import TextInput, FileListInput
 from services.embeddings_service import EmbeddingsService
 
 router = APIRouter(prefix="/api/embeddings", tags=["embeddings"])
@@ -12,6 +12,13 @@ async def create_embeddings(request: TextInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating embeddings: {str(e)}")
 
+@router.post("/create_from_files")
+async def create_embeddings_from_files(request: FileListInput):
+    try:
+        result = EmbeddingsService.create_embeddings_from_files(request.file_paths)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating embeddings: {str(e)}")
 
 @router.post("/delete")
 async def delete_embeddings():
