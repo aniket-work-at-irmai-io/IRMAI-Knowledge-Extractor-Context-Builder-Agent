@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import glob
+import json
 from datetime import datetime
 from utils.api_client import post_request
 from utils.session_manager import initialize_session_state, reset_extraction_state
@@ -10,15 +11,20 @@ from frontend_constants import (
     MODEL_TYPE_CLOSED,
     EXTRACTION_TITLE,
 )
+from langchain_community.tools import DuckDuckGoSearchResults
 
 # Initialize session state
 initialize_session_state()
 
 # Set page title
-st.title("Website Extraction and File Upload")
+st.title("Extractor")
+
+st.subheader("Website Extractor")
 
 # Initialize crawl_data directory if it doesn't exist
 os.makedirs("crawl_data", exist_ok=True)
+# Initialize directory for storing search URLs
+os.makedirs("crawl_website_urls", exist_ok=True)
 
 
 # Load all existing files from crawl_data directory into session state
@@ -50,9 +56,52 @@ def render_url_form():
     return None
 
 
+def render_context_form():
+    """Render the context-based extraction form."""
+    st.subheader("Context-Based Extractor")
+    with st.form("context_form"):
+        context_input = st.text_input("Enter search context to find relevant websites:")
+        submit_context = st.form_submit_button("Context Extract")
+        if submit_context and context_input:
+            with st.spinner("Searching for relevant websites..."):
+                search_results = perform_context_search(context_input)
+                return search_results
+    return None
+
+
+def perform_context_search(context):
+    """Perform a search using DuckDuckGo and return the results."""
+    try:
+        # Initialize the DuckDuckGo search tool
+        search = DuckDuckGoSearchResults(output_format="list")
+
+        # Perform the search
+        results = search.invoke(context)
+
+        # Extract URLs from search results
+        urls = []
+        for result in results:
+            if 'link' in result:
+                urls.append(result['link'])
+
+        # Save URLs to file
+        url_file_path = os.path.join("crawl_website_urls", "site_urls.txt")
+        with open(url_file_path, "w", encoding="utf-8") as f:
+            for url in urls:
+                f.write(f"{url}\n")
+
+        # Display the search results to the user
+        st.json(results)
+
+        return urls
+    except Exception as e:
+        st.error(f"Error performing search: {str(e)}")
+        return []
+
+
 def render_file_upload():
     """Render the file upload section."""
-    st.subheader("Or Upload Files")
+    st.subheader("File-Based Extractor")
     uploaded_files = st.file_uploader("Upload PDF, Text, or CSV files", type=['pdf', 'txt', 'csv'],
                                       accept_multiple_files=True)
 
@@ -287,12 +336,17 @@ def render_extraction_section(urls=None):
 # URL Input Form
 urls = render_url_form()
 
+# Context-based extraction
+context_urls = render_context_form()
+
 # File Upload Form
 files_uploaded = render_file_upload()
 
-# Show extraction section in all cases where there are files
+# Show extraction section in all cases where there are files or URLs
 if urls:
     render_extraction_section(urls)
+elif context_urls:
+    render_extraction_section(context_urls)
 elif files_uploaded or st.session_state.extraction_done:
     # If files were just uploaded or extraction was done previously, show the results
     render_extraction_section()

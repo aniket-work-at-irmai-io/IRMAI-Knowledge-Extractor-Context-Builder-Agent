@@ -30,3 +30,6 @@ CHAT_TITLE = "3. Chat with the Bot"
 
 CONTACT_TITLE = "Contact"
 CONTACT_INFO = "IRMAI Team"
+
+GUIDELINES_TITLE = "Generate FX Trade Guidelines"
+API_GENERATE_GUIDELINES_URL = "/api/guidelines/generate"

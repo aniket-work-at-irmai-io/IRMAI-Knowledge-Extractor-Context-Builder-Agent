@@ -15,7 +15,7 @@ load_dotenv()
 nest_asyncio.apply()
 
 # Import routes
-from routes import extraction, summarization, embeddings, chat
+from routes import extraction, summarization, embeddings, chat, guidelines
 from utils.config_utils import CONFIG
 
 # Create FastAPI app
@@ -35,6 +35,7 @@ app.include_router(extraction.router)
 app.include_router(summarization.router)
 app.include_router(embeddings.router)
 app.include_router(chat.router)
+app.include_router(guidelines.router)
 
 if __name__ == "__main__":
     host = CONFIG["server"]["host"]
