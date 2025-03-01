@@ -1,5 +1,7 @@
 import streamlit as st
-import os  # Add this import here
+import os
+import glob
+from datetime import datetime
 from utils.api_client import post_request
 from utils.session_manager import initialize_session_state, reset_extraction_state
 from frontend_constants import (
@@ -13,7 +15,25 @@ from frontend_constants import (
 initialize_session_state()
 
 # Set page title
-st.title("Website Extraction")
+st.title("Website Extraction and File Upload")
+
+# Initialize crawl_data directory if it doesn't exist
+os.makedirs("crawl_data", exist_ok=True)
+
+
+# Load all existing files from crawl_data directory into session state
+def load_existing_files():
+    if not st.session_state.extracted_files or len(st.session_state.extracted_files) == 0:
+        # Get all txt files from the crawl_data directory
+        existing_files = glob.glob("crawl_data/*.txt")
+        if existing_files:
+            st.session_state.extracted_files = existing_files
+            st.session_state.extraction_done = True
+
+
+# Call this function to initialize
+load_existing_files()
+
 
 def render_url_form():
     """Render the URL input form."""
@@ -21,22 +41,95 @@ def render_url_form():
         url_input = st.text_input("Enter comma-separated URLs to crawl:")
         submit_url = st.form_submit_button("Submit URLs")
         if submit_url and url_input:
-            # Reset any previous extraction state
-            reset_extraction_state()
+            # We're not resetting extraction state here anymore
+            # Just process the new URLs and add to existing files
+
             # Split the input by comma and strip whitespace
             urls = [url.strip() for url in url_input.split(',') if url.strip()]
             return urls
     return None
 
 
-def render_extraction_section(urls):
+def render_file_upload():
+    """Render the file upload section."""
+    st.subheader("Or Upload Files")
+    uploaded_files = st.file_uploader("Upload PDF, Text, or CSV files", type=['pdf', 'txt', 'csv'],
+                                      accept_multiple_files=True)
+
+    if uploaded_files and st.button("Process Uploaded Files"):
+        # Process the files without resetting previous ones
+        process_uploaded_files(uploaded_files)
+        return True
+    return False
+
+
+def process_uploaded_files(uploaded_files):
+    """Process uploaded files and save them to crawl_data directory."""
+    # Keep track of extraction success for each file
+    extraction_success = []
+
+    for i, file in enumerate(uploaded_files):
+        try:
+            # Generate timestamp for unique filenames
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+            # Clean filename to be filesystem-friendly
+            safe_filename = file.name.replace('/', '_').replace(':', '_')
+
+            # Create a standardized filename format
+            filename = f"crawl_data/file_{i}_{safe_filename}_{timestamp}.txt"
+
+            # Read file content based on file type
+            content = ""
+            if file.type == "application/pdf":
+                # For PDFs, use PyPDF2 or another PDF processing library
+                try:
+                    import PyPDF2
+                    from io import BytesIO
+
+                    pdf_reader = PyPDF2.PdfReader(BytesIO(file.read()))
+                    content = ""
+                    for page_num in range(len(pdf_reader.pages)):
+                        content += pdf_reader.pages[page_num].extract_text() + "\n"
+                except ImportError:
+                    content = f"PDF processing requires PyPDF2 library. Please install it with 'pip install PyPDF2'.\n"
+                    st.warning("PDF processing requires PyPDF2 library. Using placeholder text.")
+            elif file.type == "text/csv":
+                # For CSVs, read as text for now
+                content = file.getvalue().decode("utf-8")
+            else:
+                # For TXT and other files, read directly
+                content = file.getvalue().decode("utf-8")
+
+            # Save the content to a file
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            extraction_success.append((file.name, True, filename))
+
+        except Exception as e:
+            st.error(f"Error processing {file.name}: {str(e)}")
+            extraction_success.append((file.name, False, None))
+
+    # Set extraction as done if at least one file was processed successfully
+    successful_extractions = [item for item in extraction_success if item[1]]
+    if successful_extractions:
+        st.session_state.extraction_done = True
+        st.success(f"Processing complete for {len(successful_extractions)} out of {len(uploaded_files)} files!")
+
+        # Store the list of successfully processed files in the session state
+        st.session_state.extracted_files.extend([item[2] for item in successful_extractions])
+    else:
+        st.error("Failed to process any files.")
+
+
+def render_extraction_section(urls=None):
     """Render the website extraction section."""
     st.header(EXTRACTION_TITLE)
 
-    if not st.session_state.extraction_done:
+    # Process new URLs if provided
+    if urls:
         with st.spinner("Extracting websites..."):
-            os.makedirs("crawl_data", exist_ok=True)
-
             # Keep track of extraction success for each URL
             extraction_success = []
 
@@ -44,8 +137,11 @@ def render_extraction_section(urls):
                 # Call the API to extract the website
                 response = post_request(API_EXTRACT_URL, {"url": url})
                 if response.get("status") == "success":
+                    # Generate timestamp for unique filenames
+                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
                     # Save the extracted text to a file
-                    filename = f"crawl_data/url_{i}_{url.replace('://', '_').replace('/', '_').replace(':', '_')}.txt"
+                    filename = f"crawl_data/url_{i}_{url.replace('://', '_').replace('/', '_').replace(':', '_')}_{timestamp}.txt"
                     with open(filename, "w", encoding="utf-8") as f:
                         f.write(response.get("text", ""))
                     extraction_success.append((url, True, filename))
@@ -53,39 +149,42 @@ def render_extraction_section(urls):
                     st.error(f"Error extracting {url}: {response.get('message', 'Unknown error')}")
                     extraction_success.append((url, False, None))
 
-            # Set extraction as done if at least one URL was extracted successfully
+            # Update extraction state with successful extractions
             successful_extractions = [item for item in extraction_success if item[1]]
             if successful_extractions:
                 st.session_state.extraction_done = True
                 st.success(f"Extraction complete for {len(successful_extractions)} out of {len(urls)} URLs!")
 
                 # Store the list of successfully extracted files in the session state
-                st.session_state.extracted_files = [item[2] for item in successful_extractions]
+                st.session_state.extracted_files.extend([item[2] for item in successful_extractions])
             else:
                 st.error("Failed to extract any URLs.")
 
-    # Show a preview of the extracted files
+    # Show a preview of all extracted files (including previously extracted ones)
     if st.session_state.extraction_done:
         st.info(
-            f"Successfully extracted {len(st.session_state.extracted_files)} URLs. The data is stored in the 'crawl_data' folder.")
+            f"Successfully extracted {len(st.session_state.extracted_files)} files. The data is stored in the 'crawl_data' folder.")
 
         # Provide a dropdown to select a file to preview
         if st.session_state.extracted_files:
             selected_file = st.selectbox("Select a file to preview:", st.session_state.extracted_files)
             if selected_file:
-                with open(selected_file, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    preview = "\n".join([line for line in content.splitlines() if line.strip()][:5])
-                st.text_area("Extracted Text Preview", preview, height=150)
+                try:
+                    with open(selected_file, "r", encoding="utf-8") as f:
+                        content = f.read()
+                        preview = "\n".join([line for line in content.splitlines() if line.strip()][:5])
+                    st.text_area("Extracted Text Preview", preview, height=150)
 
-                # Provide a download button for the selected file
-                with open(selected_file, "r", encoding="utf-8") as f:
-                    st.download_button(
-                        label="Download Selected File",
-                        data=f.read(),
-                        file_name=os.path.basename(selected_file),
-                        mime="text/plain",
-                    )
+                    # Provide a download button for the selected file
+                    with open(selected_file, "r", encoding="utf-8") as f:
+                        st.download_button(
+                            label="Download Selected File",
+                            data=f.read(),
+                            file_name=os.path.basename(selected_file),
+                            mime="text/plain",
+                        )
+                except Exception as e:
+                    st.error(f"Error reading file {selected_file}: {str(e)}")
 
             if selected_file:
                 # Add a button to summarize just this file
@@ -118,9 +217,8 @@ def render_extraction_section(urls):
 
         st.markdown("---")
 
-
-        st.subheader("Summarize Web Pages")
-        if st.button("Summarize Web Pages", key="summarize_button"):
+        st.subheader("Summarize All Files")
+        if st.button("Summarize All Files", key="summarize_button"):
             with st.spinner("Summarizing..."):
                 all_extracted_text = ""
 
@@ -185,13 +283,16 @@ def render_extraction_section(urls):
 
         st.info("Next, go to the 'Embed and Chat' page to create embeddings and chat with the content.")
 
-# URL Input Form
+
 # URL Input Form
 urls = render_url_form()
 
-# If URLs have been submitted, show extraction section
+# File Upload Form
+files_uploaded = render_file_upload()
+
+# Show extraction section in all cases where there are files
 if urls:
     render_extraction_section(urls)
-elif st.session_state.extraction_done:
-    # If extraction was done previously, still show the results
-    render_extraction_section(None)
+elif files_uploaded or st.session_state.extraction_done:
+    # If files were just uploaded or extraction was done previously, show the results
+    render_extraction_section()

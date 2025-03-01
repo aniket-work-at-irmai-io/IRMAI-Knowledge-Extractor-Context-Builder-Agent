@@ -13,3 +13,4 @@ markdown
 python-dotenv
 fastapi
 uvicorn
+PyPDF2
