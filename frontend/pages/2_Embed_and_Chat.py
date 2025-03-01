@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 from streamlit_chat import message as st_message
 from utils.api_client import post_request
 from utils.session_manager import initialize_session_state
@@ -11,6 +12,8 @@ from frontend_constants import (
     CHAT_TITLE,
 )
 
+FAISS_INDEX_PATH = "faiss_index"
+
 # Initialize session state
 initialize_session_state()
 
@@ -18,62 +21,66 @@ initialize_session_state()
 st.title("Create Embeddings & Chat")
 
 
+def check_embeddings_exist():
+    """Check if FAISS index files exist."""
+    index_file = os.path.join(FAISS_INDEX_PATH, "index.faiss")
+    return os.path.exists(index_file)
+
+
 def render_embeddings_section():
     """Render the embeddings creation section."""
     st.header(EMBEDDINGS_TITLE)
 
-    if not st.session_state.extraction_done:
-        st.warning("Please extract website content first on the Extract page.")
-        return
+    embeddings_exist = check_embeddings_exist()
 
-    if not st.session_state.embedding_done:
+    if not embeddings_exist:
         if st.button("Create Embeddings"):
-            with st.spinner("Creating embeddings..."):
-                # Use the direct file path method instead of combining texts
-                response = post_request(
-                    "/api/embeddings/create_from_files",
-                    {"file_paths": st.session_state.extracted_files}
-                )
-
-                if response.get("status") == "success":
-                    st.session_state.embedding_done = True
-                    st.success("Vectors are created!")
-                else:
-                    st.error(f"Error: {response.get('message', 'Unknown error')}")
+            create_embeddings()
     else:
-        st.info("Embeddings have been created. You can now chat with the content.")
+        st.success("Embeddings have been created. You can now chat with the content.")
 
         # Add the "Refresh Embeddings" button
         if st.button("Refresh Embeddings"):
             with st.spinner("Refreshing embeddings..."):
-                # Reset the embedding state first
-                st.session_state.embedding_done = False
 
-                # Call the API to delete embeddings (if they exist)
+                # Call the API to delete embeddings
                 response = post_request(
-                    "/api/embeddings/delete",  # We'll create this endpoint
+                    "/api/embeddings/delete",
                     {}
                 )
 
                 # Regardless of delete result, we can now create new embeddings
                 st.success("Ready to create new embeddings.")
+                create_embeddings()
                 # Force a rerun to update the UI
                 st.rerun()
+
+
+def create_embeddings():
+    with st.spinner("Creating embeddings..."):
+        # Use the direct file path method instead of combining texts
+        response = post_request(
+            "/api/embeddings/create_from_files",
+            {"file_paths": st.session_state.extracted_files}
+        )
+
+        if response.get("status") == "success":
+            st.success("Vectors are created!")
+            # Force a rerun to update the UI
+            st.rerun()
+        else:
+            st.error(f"Error: {response.get('message', 'Unknown error')}")
 
 
 def render_chat_section():
     """Render the chat section."""
     st.header(CHAT_TITLE)
 
-    if not st.session_state.extraction_done:
-        return
+    embeddings_exist = check_embeddings_exist()
 
-    if not st.session_state.embedding_done:
+    if not embeddings_exist:
         st.info("Please create embeddings first to activate the chat.")
         return
-
-    # Let the user select the LLM type
-    llm_choice = st.radio("Select LLM Type", (MODEL_TYPE_CLOSED, MODEL_TYPE_OPEN), index=0, key="llm_choice")
 
     # Chat interface
     user_input = st.text_input("Your Message:", key="chat_input")
@@ -84,7 +91,7 @@ def render_chat_section():
             {
                 "request": {
                     "question": user_input,
-                    "model_type": llm_choice
+                    "model_type": MODEL_TYPE_CLOSED
                 },
                 "chat_history": {
                     "history": st.session_state.chat_history
@@ -98,11 +105,12 @@ def render_chat_section():
         else:
             st.error(f"Error: {response.get('message', 'Unknown error')}")
 
-    # Display the conversation using streamlit_chat component
+    # Display the conversation using streamlit_chat component with unique keys
     if st.session_state.chat_history:
-        for chat in st.session_state.chat_history:
-            st_message(chat["user"], is_user=True)
-            st_message(chat["bot"], is_user=False)
+        for i, chat in enumerate(st.session_state.chat_history):
+            # Add unique key for each message based on its index
+            st_message(chat["user"], is_user=True, key=f"user_msg_{i}")
+            st_message(chat["bot"], is_user=False, key=f"bot_msg_{i}")
 
 # Render both sections
 render_embeddings_section()
