@@ -30,7 +30,7 @@ COPY . .
 RUN playwright install
 
 # Expose the necessary ports.
-EXPOSE 8501 5000
+EXPOSE 8501 8000
 
 # Start both the frontend and backend applications.
-CMD ["sh", "-c", "streamlit run frontend/agent.py --server.enableCORS false & python backend/server.py"]
+CMD ["sh", "-c", "streamlit run frontend/Agent.py --server.enableCORS false & python backend/server.py"]
