@@ -29,8 +29,8 @@ COPY . .
 # Install Playwright browsers (required by crawl4ai).
 RUN playwright install
 
-# Expose Streamlit's default port.
-EXPOSE 8501
+# Expose the necessary ports.
+EXPOSE 8501 5000
 
-# Start the Streamlit app.
-CMD ["streamlit", "run", "app.py", "--server.enableCORS", "false"]
+# Start both the frontend and backend applications.
+CMD ["sh", "-c", "streamlit run frontend/agent.py --server.enableCORS false & python backend/server.py"]
