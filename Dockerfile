@@ -28,6 +28,7 @@ COPY . .
 
 # Install Playwright browsers (required by crawl4ai).
 RUN playwright install
+RUN playwright install-deps
 
 # Expose the necessary ports.
 EXPOSE 8501 8000
